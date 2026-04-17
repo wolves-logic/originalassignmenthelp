@@ -99,6 +99,8 @@ jobs:
     name: Deploy to EC2
     runs-on: ubuntu-latest
     needs: build-push
+    # Set to 'production' if using Environment Secrets, or remove to use Repository Secrets.
+    # environment: production
     steps:
       - name: Execute Remote SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -108,37 +110,103 @@ jobs:
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           port: 22
           script_stop: true
+          # command_timeout increases the allowed time for slow pulls/builds
+          command_timeout: 15m
           script: |
             set -euo pipefail
             IMAGE="${{ needs.build-push.outputs.image_tag }}"
             APP_DIR="/opt/oah"
             
-            echo "[1/4] Pulling $IMAGE"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo " [1/4] PULLING IMAGE: $IMAGE"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             docker pull "$IMAGE"
+            echo " Image pull complete."
+
+            # Verify environment prerequisites on the host VM
+            if [ ! -d "$APP_DIR" ]; then 
+              echo " ERROR: Application directory $APP_DIR not found on host."
+              echo "Please run: sudo mkdir -p $APP_DIR && sudo chown \$USER:\$USER $APP_DIR"
+              exit 1
+            fi
             
-            BLUE_ACTIVE=$(docker ps --filter "name=^oah_blue$" --format "{{.Names}}" | wc -l)
-            if [ "$BLUE_ACTIVE" -gt "0" ]; then
+            if [ ! -f "$APP_DIR/.env" ]; then
+              echo " ERROR: Production .env file missing at $APP_DIR/.env"
+              echo "Please create it and add your RDS/S3 credentials before deploying."
+              exit 1
+            fi
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo " [2/4] IDENTIFYING SLOTS"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            # Check which container is currently running to determine the target
+            if docker ps --format '{{.Names}}' | grep -q "^oah_blue$"; then
               NEW="green"; NEW_PORT=8002; OLD="blue"
             else
               NEW="blue";  NEW_PORT=8001; OLD="green"
             fi
             
-            echo "[2/4] Deploying to $NEW slot (port $NEW_PORT)"
-            docker rm -f "oah_$NEW" 2>/dev/null || true
-            docker run -d --name "oah_$NEW" --env-file "$APP_DIR/.env" \
-              -v "$APP_DIR/staticfiles:/app/staticfiles" -v "$APP_DIR/logs:/app/logs" \
-              -p "127.0.0.1:$NEW_PORT:8000" --restart unless-stopped "$IMAGE"
+            echo " Active slot: $OLD -> Deploying to: $NEW (port $NEW_PORT)"
             
-            echo "[3/4] Warming up..."
+            # Remove stale container if it exists
+            docker rm -f "oah_$NEW" 2>/dev/null || true
+            
+            # Launch the new container
+            docker run -d \
+              --name "oah_$NEW" \
+              --env-file "$APP_DIR/.env" \
+              -v "$APP_DIR/staticfiles:/app/staticfiles" \
+              -v "$APP_DIR/logs:/app/logs" \
+              -p "127.0.0.1:$NEW_PORT:8000" \
+              --restart unless-stopped \
+              "$IMAGE"
+            
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo " [3/4] WARMING UP & HEALTH CHECK"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            # Basic warmup period
             sleep 10
             
-            echo "[4/4] Swapping Nginx Upstream"
+            # Simple health check polling (ensure your Django app has a /health/ endpoint)
+            HEALTHY=0
+            for i in {1..10}; do
+              if curl -s "http://127.0.0.1:$NEW_PORT/health/" > /dev/null; then
+                HEALTHY=1
+                break
+              fi
+              echo "Waiting for health check (attempt $i/10)..."
+              sleep 5
+            done
+
+            if [ "$HEALTHY" -eq 0 ]; then
+              echo " HEALTH CHECK FAILED. Removing failed container."
+              docker rm -f "oah_$NEW"
+              exit 1
+            fi
+            
+            echo " Container is healthy. Proceeding to traffic swap."
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo " [4/4] SWAPPING NGINX UPSTREAM"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
             UPSTREAM="/etc/nginx/conf.d/oah_upstream.conf"
             echo "upstream oah_app { server 127.0.0.1:$NEW_PORT; keepalive 32; }" | sudo tee "$UPSTREAM" > /dev/null
             sudo nginx -t && sudo nginx -s reload
             
+            echo " Traffic routed to $NEW slot. Cleaning up $OLD..."
+            
+            # Wait for in-flight requests to complete
             sleep 5
             docker stop "oah_$OLD" 2>/dev/null || true
             docker rm "oah_$OLD" 2>/dev/null || true
+            
+            # Clean up old images to keep disk space under control
             docker image prune -f --filter "until=24h"
+            
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "  DEPLOYMENT COMPLETE"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
