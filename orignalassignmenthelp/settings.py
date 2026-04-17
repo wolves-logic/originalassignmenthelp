@@ -65,6 +65,10 @@ if not DEBUG:
     # Nginx config MUST include: proxy_set_header X-Forwarded-Proto https;
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+    # CSRF Trusted Origins — required for Django 4.0+ when behind a proxy.
+    # We dynamically generate these from ALLOWED_HOSTS to keep setup DRY.
+    CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in ALLOWED_HOSTS if "*" not in host]
+
 # ---------------------------------------------------------------------------
 # Application definition
 # ---------------------------------------------------------------------------

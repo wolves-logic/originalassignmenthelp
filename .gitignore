@@ -72,3 +72,9 @@ desktop.ini
 *.swp
 *.swo
 *~
+
+# Deployment
+.deploy/
+
+# Deployment
+OAH-AWS.pem

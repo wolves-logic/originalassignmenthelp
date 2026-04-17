@@ -50,5 +50,10 @@ python manage.py migrate --noinput
 echo "[2/3] Collecting static files..."
 python manage.py collectstatic --noinput --clear
 
+echo "[2.5/3] Creating superuser (if not exists)..."
+# Uses DJANGO_SUPERUSER_USERNAME, DJANGO_SUPERUSER_PASSWORD, DJANGO_SUPERUSER_EMAIL env vars.
+# We wrap it in a try/except or similar to make it idempotent.
+python manage.py createsuperuser --noinput || echo "Superuser creation skipped (already exists or variables missing)"
+
 echo "[3/3] Starting Gunicorn..."
 exec gunicorn orignalassignmenthelp.wsgi:application -c gunicorn.conf.py
