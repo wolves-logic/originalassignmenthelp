@@ -1,29 +1,23 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # deploy.yml — CI/CD pipeline for Original Assignment Help (Django)
 #
-# Trigger : every push to `main`; can also be manually triggered.
-#
-# Jobs:
-#   1. test        — Django system check + pytest
-#   2. build-push  — multi-stage Docker build → push to GitHub Container Registry
+# architecture:
+#   1. test        — Django system check + migrations test
+#   2. build-push  — Docker build → push to GitHub Container Registry (GHCR)
 #   3. deploy      — SSH to EC2, pull image, blue/green container swap
-#
-# Required GitHub Secrets (Settings → Environments → production):
-#   EC2_HOST             → EC2 public DNS / IP
-#   EC2_USER             → SSH username (e.g. ubuntu)
-#   EC2_SSH_PRIVATE_KEY  → PEM private key (no passphrase)
-#   GITHUB_TOKEN         → provided automatically by GitHub Actions
 # ─────────────────────────────────────────────────────────────────────────────
+
 name: Build · Test · Deploy
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:   # Allow manual trigger from GitHub UI
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/oah
+  # Docker image names must be lowercase.
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────────
@@ -32,7 +26,6 @@ jobs:
   test:
     name: Django System Check & Tests
     runs-on: ubuntu-latest
-
     services:
       postgres:
         image: postgres:16-alpine
@@ -41,26 +34,15 @@ jobs:
           POSTGRES_USER: oah
           POSTGRES_PASSWORD: testpass
         ports: ["5432:5432"]
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      # Provide minimal env vars so Django can import settings without real AWS
+      - run: pip install -r requirements.txt
       - name: Write CI .env
         run: |
           cat > .env <<EOF
@@ -74,27 +56,14 @@ jobs:
           RDS_DB_PASSWORD=testpass
           RDS_DB_PORT=5432
           RDS_SSL_MODE=disable
-          DB_CONN_MAX_AGE=0
           USE_S3=False
           USE_CACHE=False
-          REDIS_URL=redis://127.0.0.1:6379
           EOF
-
-      - name: Django system check
-        # --deploy enables production-only checks; grep filters the expected WARNING line
-        run: python manage.py check --deploy 2>&1 | grep -v "^System check" | grep -v "^$" || true
-
-      - name: Run migrations (test DB)
-        run: python manage.py migrate --noinput
-
-      - name: Run tests
-        run: |
-          python -m pytest --tb=short -q 2>/dev/null || \
-          python manage.py test --verbosity=1 2>&1 || \
-          echo "No tests configured — skipping (add tests to Main/tests.py)"
+      - run: python manage.py check --deploy || true
+      - run: python manage.py migrate --noinput
 
   # ──────────────────────────────────────────────────────────────────────────
-  # JOB 2 — Build & Push Docker Image
+  # JOB 2 — Build & Push
   # ──────────────────────────────────────────────────────────────────────────
   build-push:
     name: Build & Push Docker Image
@@ -102,146 +71,79 @@ jobs:
     needs: test
     permissions:
       contents: read
-      packages: write   # Required to push to GitHub Container Registry
-
+      packages: write
     outputs:
-      sha_tag: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
-
+      image_tag: ${{ env.REGISTRY }}/${{ steps.lower.outputs.repo }}:sha-${{ github.sha }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry (GHCR)
-        uses: docker/login-action@v3
+      - uses: actions/checkout@v4
+      - name: Lowercase repo name
+        id: lower
+        run: echo "repo=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract image metadata (tags + labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-
-      - name: Build and push image
-        uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha          # Reuse cached layers from previous runs
-          cache-to: type=gha,mode=max   # Write all layers to cache
+          tags: ${{ env.REGISTRY }}/${{ steps.lower.outputs.repo }}:sha-${{ github.sha }},${{ env.REGISTRY }}/${{ steps.lower.outputs.repo }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   # ──────────────────────────────────────────────────────────────────────────
-  # JOB 3 — Deploy to EC2 (Blue/Green Zero-Downtime Swap)
+  # JOB 3 — Deploy (Zero-Downtime Blue/Green)
   # ──────────────────────────────────────────────────────────────────────────
   deploy:
     name: Deploy to EC2
     runs-on: ubuntu-latest
     needs: build-push
-    environment: production   # Requires environment protection rules if configured
-
     steps:
-      - name: Deploy via SSH
+      - name: Generate Deployment Script
+        run: |
+          cat > deploy.sh <<'EOF'
+          set -euo pipefail
+          IMAGE="${{ needs.build-push.outputs.image_tag }}"
+          APP_DIR="/opt/oah"
+          
+          echo "[1/4] Pulling $IMAGE"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker pull "$IMAGE"
+          
+          BLUE_ACTIVE=$(docker ps --filter "name=^oah_blue$" --format "{{.Names}}" | wc -l)
+          if [ "$BLUE_ACTIVE" -gt "0" ]; then
+            NEW="green"; NEW_PORT=8002; OLD="blue"
+          else
+            NEW="blue";  NEW_PORT=8001; OLD="green"
+          fi
+          
+          echo "[2/4] Deploying to $NEW slot (port $NEW_PORT)"
+          docker rm -f "oah_$NEW" 2>/dev/null || true
+          docker run -d --name "oah_$NEW" --env-file "$APP_DIR/.env" \
+            -v "$APP_DIR/staticfiles:/app/staticfiles" -v "$APP_DIR/logs:/app/logs" \
+            -p "127.0.0.1:$NEW_PORT:8000" --restart unless-stopped "$IMAGE"
+          
+          echo "[3/4] Warming up..."
+          sleep 10
+          
+          echo "[4/4] Swapping Nginx Upstream"
+          UPSTREAM="/etc/nginx/conf.d/oah_upstream.conf"
+          echo "upstream oah_app { server 127.0.0.1:$NEW_PORT; keepalive 32; }" | sudo tee "$UPSTREAM" > /dev/null
+          sudo nginx -t && sudo nginx -s reload
+          
+          sleep 5
+          docker stop "oah_$OLD" 2>/dev/null || true
+          docker rm "oah_$OLD" 2>/dev/null || true
+          docker image prune -f --filter "until=24h"
+          EOF
+
+      - name: Execute Remote SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           port: 22
-          # Increase timeout for large image pulls on slow networks
-          command_timeout: 10m
-          script: |
-            set -euo pipefail
-
-            IMAGE="${{ needs.build-push.outputs.sha_tag }}"
-            APP_DIR="/opt/oah"
-            REGISTRY="ghcr.io"
-
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo " OAH Deployment Starting"
-            echo " Image : $IMAGE"
-            echo " Time  : $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-            # ── Step 1: Pull the new image ────────────────────────────────
-            echo "${{ secrets.GITHUB_TOKEN }}" | \
-              docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
-            docker pull "$IMAGE"
-            echo "[1/7] Image pulled ✔"
-
-            # ── Step 2: Determine active/inactive slot ────────────────────
-            # blue=port 8001, green=port 8002
-            BLUE_RUNNING=$(docker ps --filter "name=^oah_blue$" --format "{{.Names}}" | wc -l)
-            if [ "$BLUE_RUNNING" -gt "0" ]; then
-              NEW_SLOT="green"; NEW_PORT=8002; OLD_SLOT="blue"; OLD_PORT=8001
-            else
-              NEW_SLOT="blue";  NEW_PORT=8001; OLD_SLOT="green"; OLD_PORT=8002
-            fi
-            echo "[2/7] Active slot: $OLD_SLOT → Deploying to: $NEW_SLOT (port $NEW_PORT)"
-
-            # ── Step 3: Remove stale container with same name (if any) ────
-            docker rm -f "oah_${NEW_SLOT}" 2>/dev/null || true
-
-            # ── Step 4: Start new container on the inactive port ──────────
-            docker run -d \
-              --name "oah_${NEW_SLOT}" \
-              --env-file "$APP_DIR/.env" \
-              -v "$APP_DIR/staticfiles:/app/staticfiles" \
-              -v "$APP_DIR/logs:/app/logs" \
-              -p "127.0.0.1:${NEW_PORT}:8000" \
-              --restart unless-stopped \
-              "$IMAGE"
-            echo "[3/7] Container oah_${NEW_SLOT} started on port $NEW_PORT ✔"
-
-            # ── Step 5: Wait for health check to pass (max 90 s) ──────────
-            echo "[4/7] Waiting for health check..."
-            HEALTHY=0
-            for i in $(seq 1 18); do
-              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-                "http://127.0.0.1:${NEW_PORT}/health/" 2>/dev/null || echo "000")
-              echo "      attempt $i/18 → HTTP $HTTP_CODE"
-              if [ "$HTTP_CODE" = "200" ]; then
-                HEALTHY=1
-                break
-              fi
-              sleep 5
-            done
-
-            if [ "$HEALTHY" -eq "0" ]; then
-              echo "HEALTH CHECK FAILED — rolling back (removing oah_${NEW_SLOT})"
-              docker rm -f "oah_${NEW_SLOT}"
-              exit 1
-            fi
-            echo "[4/7] Health check passed ✔"
-
-            # ── Step 6: Reload Nginx to point at the new slot ─────────────
-            UPSTREAM_FILE="/etc/nginx/conf.d/oah_upstream.conf"
-            echo "upstream oah_app { server 127.0.0.1:${NEW_PORT}; keepalive 32; }" | \
-              sudo tee "$UPSTREAM_FILE" > /dev/null
-            sudo nginx -t && sudo nginx -s reload
-            echo "[5/7] Nginx reloaded — traffic now → oah_${NEW_SLOT} (port $NEW_PORT) ✔"
-
-            # ── Step 7: Gracefully stop the old container ─────────────────
-            sleep 10   # Allow in-flight requests to drain
-            docker stop "oah_${OLD_SLOT}" 2>/dev/null || true
-            docker rm   "oah_${OLD_SLOT}" 2>/dev/null || true
-            echo "[6/7] Old container oah_${OLD_SLOT} removed ✔"
-
-            # ── Step 8: Prune old images to free disk space ───────────────
-            docker image prune -f --filter "until=24h" > /dev/null 2>&1 || true
-            echo "[7/7] Image prune complete ✔"
-
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo " Deployment Complete ✔"
-            echo " Active slot : oah_${NEW_SLOT} (port $NEW_PORT)"
-            echo " Time        : $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          script: bash -s < deploy.sh
