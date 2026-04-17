@@ -113,7 +113,7 @@ jobs:
           # command_timeout increases the allowed time for slow pulls/builds
           command_timeout: 15m
           script: |
-            set -euo pipefail
+            set -eu
             IMAGE="${{ needs.build-push.outputs.image_tag }}"
             APP_DIR="/opt/oah"
             
@@ -141,14 +141,17 @@ jobs:
             echo " [2/4] IDENTIFYING SLOTS"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             
-            # Check which container is currently running to determine the target
-            # Use a more resilient check that won't trip 'set -o pipefail'
+            # Check which container is currently running to determine target
+            # Use POSIX 'case' for maximum compatibility
             ACTIVE_CONTAINERS=$(docker ps --format '{{.Names}}')
-            if [[ "$ACTIVE_CONTAINERS" == *"oah_blue"* ]]; then
-              NEW="green"; NEW_PORT=8002; OLD="blue"
-            else
-              NEW="blue";  NEW_PORT=8001; OLD="green"
-            fi
+            case "$ACTIVE_CONTAINERS" in
+              *oah_blue*)
+                NEW="green"; NEW_PORT=8002; OLD="blue"
+                ;;
+              *)
+                NEW="blue";  NEW_PORT=8001; OLD="green"
+                ;;
+            esac
             
             echo " Active slot: $OLD -> Deploying to: $NEW (port $NEW_PORT)"
             
