@@ -101,37 +101,45 @@ jobs:
             IMAGE="${{ needs.build-push.outputs.image_tag }}"
             APP_DIR="/opt/oah"
             
-            echo "--- STEP 1: PULLING IMAGE ---"
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            docker pull "$IMAGE"
-            
+            echo "--- STEP 1: READYING HOST ---"
             if [ ! -d "$APP_DIR" ]
-            then 
-              echo "ERROR: Application directory $APP_DIR not found."
-              exit 1
+            then
+              echo "Creating $APP_DIR..."
+              sudo mkdir -p "$APP_DIR"
+              sudo chown $USER:$USER "$APP_DIR"
             fi
             
             if [ ! -f "$APP_DIR/.env" ]
             then
-              echo "ERROR: .env file missing at $APP_DIR/.env"
+              echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+              echo " ERROR: .env file not found at $APP_DIR/.env"
+              echo " Action: Please create it on your EC2 before deploying."
+              echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
               exit 1
             fi
 
-            echo "--- STEP 2: IDENTIFYING SLOTS ---"
+            echo "Logging into GHCR..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            
+            echo "Pulling $IMAGE..."
+            docker pull "$IMAGE"
+            
+            echo "--- STEP 2: SLOTTING ---"
             ACTIVE_CONTAINERS=$(docker ps --format '{{.Names}}')
+            case "$ACTIVE_CONTAINERS" in
+              *oah_blue*)
+                NEW="green"
+                NEW_PORT="8002"
+                OLD="blue"
+                ;;
+              *)
+                NEW="blue"
+                NEW_PORT="8001"
+                OLD="green"
+                ;;
+            esac
             
-            if echo "$ACTIVE_CONTAINERS" | grep -q "oah_blue"
-            then
-              NEW="green"
-              NEW_PORT="8002"
-              OLD="blue"
-            else
-              NEW="blue"
-              NEW_PORT="8001"
-              OLD="green"
-            fi
-            
-            echo "Target Slot: $NEW (Port: $NEW_PORT)"
+            echo "Deploying to $NEW slot on port $NEW_PORT"
             
             docker rm -f "oah_$NEW" 2>/dev/null || true
             
@@ -144,7 +152,7 @@ jobs:
               --restart unless-stopped \
               "$IMAGE"
             
-            echo "--- STEP 3: HEALTH CHECK ---"
+            echo "--- STEP 3: WARMING UP ---"
             sleep 10
             
             HEALTHY=0
@@ -161,12 +169,12 @@ jobs:
 
             if [ "$HEALTHY" -eq 0 ]
             then
-              echo "ERROR: HEALTH CHECK FAILED."
+              echo "ERROR: Health check failed."
               docker rm -f "oah_$NEW"
               exit 1
             fi
 
-            echo "--- STEP 4: NGINX SWAP ---"
+            echo "--- STEP 4: SWAPPING ---"
             UPSTREAM="/etc/nginx/conf.d/oah_upstream.conf"
             echo "upstream oah_app { server 127.0.0.1:$NEW_PORT; keepalive 32; }" | sudo tee "$UPSTREAM" > /dev/null
             sudo nginx -t && sudo nginx -s reload
