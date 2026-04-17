@@ -16,7 +16,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # Docker image names must be lowercase.
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
@@ -100,46 +99,7 @@ jobs:
     name: Deploy to EC2
     runs-on: ubuntu-latest
     needs: build-push
-    environment: production   # Required for environment-specific secrets
     steps:
-      - name: Generate Deployment Script
-        run: |
-          cat > deploy.sh <<'EOF'
-          set -euo pipefail
-          IMAGE="${{ needs.build-push.outputs.image_tag }}"
-          APP_DIR="/opt/oah"
-          
-          echo "[1/4] Pulling $IMAGE"
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          docker pull "$IMAGE"
-          
-          BLUE_ACTIVE=$(docker ps --filter "name=^oah_blue$" --format "{{.Names}}" | wc -l)
-          if [ "$BLUE_ACTIVE" -gt "0" ]; then
-            NEW="green"; NEW_PORT=8002; OLD="blue"
-          else
-            NEW="blue";  NEW_PORT=8001; OLD="green"
-          fi
-          
-          echo "[2/4] Deploying to $NEW slot (port $NEW_PORT)"
-          docker rm -f "oah_$NEW" 2>/dev/null || true
-          docker run -d --name "oah_$NEW" --env-file "$APP_DIR/.env" \
-            -v "$APP_DIR/staticfiles:/app/staticfiles" -v "$APP_DIR/logs:/app/logs" \
-            -p "127.0.0.1:$NEW_PORT:8000" --restart unless-stopped "$IMAGE"
-          
-          echo "[3/4] Warming up..."
-          sleep 10
-          
-          echo "[4/4] Swapping Nginx Upstream"
-          UPSTREAM="/etc/nginx/conf.d/oah_upstream.conf"
-          echo "upstream oah_app { server 127.0.0.1:$NEW_PORT; keepalive 32; }" | sudo tee "$UPSTREAM" > /dev/null
-          sudo nginx -t && sudo nginx -s reload
-          
-          sleep 5
-          docker stop "oah_$OLD" 2>/dev/null || true
-          docker rm "oah_$OLD" 2>/dev/null || true
-          docker image prune -f --filter "until=24h"
-          EOF
-
       - name: Execute Remote SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -147,4 +107,38 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           port: 22
-          script: bash -s < deploy.sh
+          script_stop: true
+          script: |
+            set -euo pipefail
+            IMAGE="${{ needs.build-push.outputs.image_tag }}"
+            APP_DIR="/opt/oah"
+            
+            echo "[1/4] Pulling $IMAGE"
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            docker pull "$IMAGE"
+            
+            BLUE_ACTIVE=$(docker ps --filter "name=^oah_blue$" --format "{{.Names}}" | wc -l)
+            if [ "$BLUE_ACTIVE" -gt "0" ]; then
+              NEW="green"; NEW_PORT=8002; OLD="blue"
+            else
+              NEW="blue";  NEW_PORT=8001; OLD="green"
+            fi
+            
+            echo "[2/4] Deploying to $NEW slot (port $NEW_PORT)"
+            docker rm -f "oah_$NEW" 2>/dev/null || true
+            docker run -d --name "oah_$NEW" --env-file "$APP_DIR/.env" \
+              -v "$APP_DIR/staticfiles:/app/staticfiles" -v "$APP_DIR/logs:/app/logs" \
+              -p "127.0.0.1:$NEW_PORT:8000" --restart unless-stopped "$IMAGE"
+            
+            echo "[3/4] Warming up..."
+            sleep 10
+            
+            echo "[4/4] Swapping Nginx Upstream"
+            UPSTREAM="/etc/nginx/conf.d/oah_upstream.conf"
+            echo "upstream oah_app { server 127.0.0.1:$NEW_PORT; keepalive 32; }" | sudo tee "$UPSTREAM" > /dev/null
+            sudo nginx -t && sudo nginx -s reload
+            
+            sleep 5
+            docker stop "oah_$OLD" 2>/dev/null || true
+            docker rm "oah_$OLD" 2>/dev/null || true
+            docker image prune -f --filter "until=24h"
