@@ -100,26 +100,11 @@ jobs:
             IMAGE="${{ needs.build-push.outputs.image_tag }}"
             APP_DIR="/opt/oah"
             
-            echo "STARTING DEPLOYMENT: $IMAGE"
-
-            # Check if directory exists
-            if cd "$APP_DIR"
-            then
-              echo "Directory $APP_DIR located."
-            else
-              echo "ERROR: Directory $APP_DIR not found. Is your EC2 ready?"
-              exit 1
-            fi
+            echo "--- STARTING: $IMAGE ---"
             
-            # Check if .env exists
-            if ls .env > /dev/null 2>&1
-            then
-              echo ".env file located."
-            else
-              echo "ERROR: .env file missing in $APP_DIR"
-              exit 1
-            fi
-
+            # Ensure permissions are correct (case .env was created as root)
+            sudo chown -R $USER:$USER $APP_DIR
+            
             echo "--- STEP 1: LOGIN ---"
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             
@@ -141,10 +126,12 @@ jobs:
                 ;;
             esac
             
-            echo "Action: Deploying to $NEW slot on port $NEW_PORT"
+            echo "Target: $NEW (Port: $NEW_PORT)"
             
+            # Clean up target slot
             docker rm -f "oah_$NEW" 2>/dev/null || true
             
+            # Run new container
             docker run -d \
               --name "oah_$NEW" \
               --env-file "$APP_DIR/.env" \
@@ -154,7 +141,7 @@ jobs:
               --restart unless-stopped \
               "$IMAGE"
             
-            echo "--- STEP 4: HEALTH CHECK ---"
+            echo "--- STEP 4: HEALTH ---"
             sleep 10
             
             HEALTHY=0
@@ -165,7 +152,7 @@ jobs:
                 HEALTHY=1
                 break
               fi
-              echo "Waiting for health check (attempt $i/10)..."
+              echo "Health check attempt $i/10..."
               sleep 5
             done
 
@@ -176,14 +163,15 @@ jobs:
               exit 1
             fi
 
-            echo "--- STEP 5: UPSTREAM SWAP ---"
+            echo "--- STEP 5: SWAP ---"
             UPSTREAM="/etc/nginx/conf.d/oah_upstream.conf"
             echo "upstream oah_app { server 127.0.0.1:$NEW_PORT; keepalive 32; }" | sudo tee "$UPSTREAM" > /dev/null
             sudo nginx -t && sudo nginx -s reload
             
+            # Finalize
             sleep 5
             docker stop "oah_$OLD" 2>/dev/null || true
             docker rm "oah_$OLD" 2>/dev/null || true
             docker image prune -f --filter "until=24h"
             
-            echo "--- DEPLOYMENT FINISHED ---"
+            echo "--- DEPLOYMENT SUCCESS ---"
