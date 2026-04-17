@@ -6,11 +6,17 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from django.http import HttpResponse
+
+def health_check(request):
+    return HttpResponse("OK", content_type="text/plain")
+
 admin.site.site_header = "Original Assignment Help Administration"
 admin.site.site_title = "OAH Admin Portal"
 admin.site.index_title = "Welcome to Original Assignment Help Dashboard"
 
 urlpatterns = [
+    path("health/", health_check),
     path("ckeditor5/", include("django_ckeditor_5.urls")),
     path("", include("Main.urls")),
     path("admin/", admin.site.urls),
