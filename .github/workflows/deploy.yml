@@ -17,6 +17,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # Fix Node.js 20 deprecation warnings by opting into Node.js 24
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────────
@@ -84,7 +86,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -103,7 +105,7 @@ jobs:
     # environment: production
     steps:
       - name: Execute Remote SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
@@ -175,9 +177,9 @@ jobs:
             # Basic warmup period
             sleep 10
             
-            # Simple health check polling (ensure your Django app has a /health/ endpoint)
+            # Simple health check polling (POSIX compliant)
             HEALTHY=0
-            for i in {1..10}; do
+            for i in 1 2 3 4 5 6 7 8 9 10; do
               if curl -s "http://127.0.0.1:$NEW_PORT/health/" > /dev/null; then
                 HEALTHY=1
                 break
