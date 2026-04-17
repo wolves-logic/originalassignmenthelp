@@ -29,8 +29,8 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -64,7 +64,7 @@ jobs:
     outputs:
       image_tag: ${{ env.REGISTRY }}/${{ steps.lower.outputs.repo }}:sha-${{ github.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Lowercase repo name
         id: lower
         run: echo "repo=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
@@ -97,31 +97,19 @@ jobs:
           script_stop: true
           command_timeout: 15m
           script: |
-            set -e
             IMAGE="${{ needs.build-push.outputs.image_tag }}"
             APP_DIR="/opt/oah"
             
-            echo "--- STEP 1: READYING HOST ---"
-            if [ ! -d "$APP_DIR" ]
-            then
-              echo "Creating $APP_DIR..."
-              sudo mkdir -p "$APP_DIR"
-              sudo chown $USER:$USER "$APP_DIR"
-            fi
+            echo "Deployment Image: $IMAGE"
             
             if [ ! -f "$APP_DIR/.env" ]
             then
-              echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-              echo " ERROR: .env file not found at $APP_DIR/.env"
-              echo " Action: Please create it on your EC2 before deploying."
-              echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+              echo "ERROR: .env file not found at $APP_DIR/.env"
               exit 1
             fi
 
-            echo "Logging into GHCR..."
+            echo "--- STEP 1: PULLING ---"
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            
-            echo "Pulling $IMAGE..."
             docker pull "$IMAGE"
             
             echo "--- STEP 2: SLOTTING ---"
@@ -139,7 +127,7 @@ jobs:
                 ;;
             esac
             
-            echo "Deploying to $NEW slot on port $NEW_PORT"
+            echo "Target Slot: $NEW (Port: $NEW_PORT)"
             
             docker rm -f "oah_$NEW" 2>/dev/null || true
             
@@ -152,7 +140,7 @@ jobs:
               --restart unless-stopped \
               "$IMAGE"
             
-            echo "--- STEP 3: WARMING UP ---"
+            echo "--- STEP 3: HEALTH CHECK ---"
             sleep 10
             
             HEALTHY=0
