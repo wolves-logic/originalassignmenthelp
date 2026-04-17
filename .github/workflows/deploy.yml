@@ -141,23 +141,29 @@ jobs:
               "$IMAGE"
             
             echo "--- STEP 4: HEALTH CHECK ---"
-            sleep 10
+            echo "Allowing 30s for migrations & static collection..."
+            sleep 30
             
             HEALTHY=0
-            for i in 1 2 3 4 5 6 7 8 9 10
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12
             do
               if curl -s "http://127.0.0.1:$NEW_PORT/health/" > /dev/null
               then
                 HEALTHY=1
                 break
               fi
-              echo "Waiting for health check $i/10..."
+              echo "Health check attempt $i/12... (Still waiting for Gunicorn)"
               sleep 5
             done
 
             if [ "$HEALTHY" -eq 0 ]
             then
-              echo "ERROR: Health check failed."
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo " ❌ ERROR: HEALTH CHECK FAILED"
+              echo " Dumping container logs for diagnosis:"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              docker logs "oah_$NEW" | tail -n 50
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
               docker rm -f "oah_$NEW"
               exit 1
             fi
