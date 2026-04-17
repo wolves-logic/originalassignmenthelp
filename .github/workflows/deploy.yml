@@ -105,7 +105,13 @@ jobs:
             echo "--- STARTING DEPLOYMENT ---"
             echo "Image: $IMAGE"
             
+            # ── PERMISSION FIX ────────────────────────────────────────────────
+            # Create host directories and ensure they are writable by the 
+            # container's 'app' user (non-root).
+            sudo mkdir -p "$APP_DIR/logs" "$APP_DIR/staticfiles"
+            sudo chmod -R 777 "$APP_DIR/logs" "$APP_DIR/staticfiles"
             sudo chown -R $USER:$USER $APP_DIR
+            # ──────────────────────────────────────────────────────────────────
             
             echo "--- STEP 1: LOGIN ---"
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
