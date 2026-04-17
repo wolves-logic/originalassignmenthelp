@@ -1,0 +1,57 @@
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  Resources - OAH
+{% endblock %}
+
+{% block content %}
+  {# Hero Section #}
+  <section class="bg-dark text-white py-5">
+    <div class="container text-center">
+      <h1 class="display-4 fw-bold">Student Resources</h1>
+      <p class="lead">Free tools, guides, and samples to boost your academic success</p>
+    </div>
+  </section>
+
+  {# Resource Categories - 3-column grid #}
+  <section class="py-5">
+    <div class="container">
+      <div class="row g-4">
+        {# Study Guides Card #}
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm text-center">
+            <div class="card-body p-5">
+              <i class="bi bi-journal-check display-1 text-dark mb-3"></i>
+              <h3 class="fw-bold">Study Guides</h3>
+              <a href="{% url 'guides' %}" class="btn btn-dark">Browse Guides</a>
+            </div>
+          </div>
+        </div>
+
+        {# Free Tools Card #}
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm text-center">
+            <div class="card-body p-5">
+              <i class="bi bi-tools display-1 text-dark mb-3"></i>
+              <h3 class="fw-bold">Free Tools</h3>
+              <a href="{% url 'tools' %}" class="btn btn-dark">Explore Tools</a>
+            </div>
+          </div>
+        </div>
+
+        {# Sample Works Card #}
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm text-center">
+            <div class="card-body p-5">
+              <i class="bi bi-file-earmark-text display-1 text-dark mb-3"></i>
+              <h3 class="fw-bold">Sample Works</h3>
+              <a href="{% url 'works' %}" class="btn btn-dark">View Samples</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

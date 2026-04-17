@@ -1,0 +1,138 @@
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  About Us - OAH
+{% endblock %}
+
+{% block content %}
+  {# Hero Section #}
+  <section class="bg-dark text-white py-5">
+    <div class="container text-center">
+      <h1 class="display-4 fw-bold">{{ about_page.story_title }}</h1>
+      <p class="lead">{{ about_page.story_lead }}</p>
+    </div>
+  </section>
+
+  {# Story Section - Image + Text with Statistics #}
+  <section class="py-5">
+    <div class="container">
+      <div class="row align-items-center g-5">
+        {# Story Image #}
+        <div class="col-lg-6">
+          {% if about_page.story_image %}
+            <img src="{{ about_page.story_image.url }}" alt="Our Story" class="img-fluid rounded shadow" />
+          {% endif %}
+        </div>
+
+        {# Story Content and Stats #}
+        <div class="col-lg-6">
+          <h2 class="display-6 fw-bold mb-4">{{ about_page.story_title }}</h2>
+          <p class="lead text-muted">{{ about_page.story_description }}</p>
+
+          {# Statistics Grid - 3 columns #}
+          <div class="row g-4 mt-4">
+            <div class="col-4">
+              <div class="text-center">
+                <h3 class="fw-bold text-dark mb-0">{{ about_page.students_helped }}</h3>
+                <small class="text-muted">Students Helped</small>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="text-center">
+                <h3 class="fw-bold text-dark mb-0">{{ about_page.success_rate }}</h3>
+                <small class="text-muted">Success Rate</small>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="text-center">
+                <h3 class="fw-bold text-dark mb-0">{{ about_page.years_experience }}</h3>
+                <small class="text-muted">Years Experience</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# Timeline & Content Section #}
+  <section class="py-5 bg-light">
+    <div class="container">
+      <div class="row g-5">
+        {# Timeline - Company milestones #}
+        {% if milestones %}
+          <div class="col-lg-4">
+            <h3 class="fw-bold mb-4">{{ about_page.timeline_title }}</h3>
+            <div class="timeline">
+              {% for milestone in milestones %}
+                <div class="mb-4 pb-4 border-start border-dark border-3 ps-4">
+                  <span class="badge bg-dark mb-2">{{ milestone.year }}</span>
+                  <h5 class="fw-bold">{{ milestone.title }}</h5>
+                  <p class="text-muted">{{ milestone.description }}</p>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        {# Content Stack - Featured image, Vision/Mission, Values #}
+        <div class="col-lg-8">
+          {# Featured Image with Overlay #}
+          {% if about_page.featured_image %}
+            <div class="position-relative mb-5 rounded overflow-hidden shadow">
+              <img src="{{ about_page.featured_image.url }}" alt="Featured" class="img-fluid w-100" style="height: 300px; object-fit: cover;" />
+              <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center">
+                <h2 class="text-white fw-bold">{{ about_page.featured_image_title }}</h2>
+              </div>
+            </div>
+          {% endif %}
+
+          {# Vision & Mission Cards #}
+          <div class="row g-4 mb-5">
+            <div class="col-md-6">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                  <div class="bg-light border border-dark border-opacity-25 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                    <i class="bi bi-eye fs-1 text-dark"></i>
+                  </div>
+                  <h4 class="fw-bold">{{ about_page.vision_title }}</h4>
+                  <p class="text-muted">{{ about_page.vision_text }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                  <div class="bg-light border border-dark border-opacity-25 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                    <i class="bi bi-bullseye fs-1 text-dark"></i>
+                  </div>
+                  <h4 class="fw-bold">{{ about_page.mission_title }}</h4>
+                  <p class="text-muted">{{ about_page.mission_text }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {# Core Values Grid #}
+          {% if core_values %}
+            <div>
+              <h4 class="fw-bold mb-4">Our Core Values</h4>
+              <div class="row g-3">
+                {% for value in core_values %}
+                  <div class="col-6 col-md-4">
+                    <div class="card border-0 bg-light border border-dark border-opacity-25 text-center p-3">
+                      <i class="{{ value.icon_class }} fs-2 text-dark mb-2"></i>
+                      <h6 class="fw-bold mb-0">{{ value.title }}</h6>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

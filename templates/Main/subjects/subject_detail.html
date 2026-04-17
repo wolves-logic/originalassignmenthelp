@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  {{ subject.title }} | Original Assignment Help
+{% endblock %}
+
+{% block content %}
+  <section class="bg-dark text-white py-5 position-relative"
+    style="min-height: 300px; {% if subject.hero_image %}
+      
+      
+      background-image: url('{{ subject.hero_image.url }}'); background-size: cover; background-position: center;
+
+
+    {% endif %}">
+    <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50"></div>
+    <div class="container position-relative text-center" style="z-index: 2;">
+      <h1 class="display-4 fw-bold">{{ subject.title }}</h1>
+      <p class="lead">Academic Subjects > {{ subject.title }}</p>
+    </div>
+  </section>
+
+  <div class="container py-5">
+    <div class="row g-5">
+      <main class="col-lg-8">
+        <div class="lead mb-4">{{ subject.intro_description|linebreaks }}</div>
+        <div class="mb-5">{{ subject.content|safe }}</div>
+
+        <div class="mt-5">
+          <h3 class="fw-bold mb-4">Related Subjects</h3>
+          <div class="row g-3">
+            {% for related in related_subjects %}
+              <div class="col-md-6">
+                <a href="{% url 'subject_detail' related.slug %}" class="text-decoration-none">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body d-flex align-items-center">
+                      {% if related.thumbnail %}
+                        <img src="{{ related.thumbnail.url }}" alt="{{ related.title }}" class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;" />
+                      {% else %}
+                        <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                          <i class="bi bi-book text-muted"></i>
+                        </div>
+                      {% endif %}
+                      <h6 class="mb-0 text-dark">{{ related.title }}</h6>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </main>
+
+      <aside class="col-lg-4">
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-body">
+            <h5 class="card-title fw-bold mb-3">Explore Subjects</h5>
+            <div class="list-group list-group-flush">
+              <a href="{% url 'subject_list' %}" class="list-group-item list-group-item-action border-0">All Subjects <i class="bi bi-grid float-end"></i></a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 bg-dark text-white">
+          <div class="card-body text-center p-4">
+            <h5 class="fw-bold">Need Help?</h5>
+            <p>Get expert assistance with {{ subject.title }} from our qualified professionals.</p>
+            <a href="https://wa.me/919959691347" target="_blank" rel="noopener noreferrer" class="btn btn-light btn-lg">Order Now</a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+{% endblock %}

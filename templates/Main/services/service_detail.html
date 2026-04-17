@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  {{ service.title }} | Original Assignment Help
+{% endblock %}
+
+{% block content %}
+  <!-- Hero Banner -->
+  <section class="bg-dark text-white py-5 position-relative"
+    style="min-height: 300px; {% if service.hero_image %}
+      
+      
+       background-image: url('{{ service.hero_image.url }}'); background-size: cover; background-position: center;
+
+
+    {% endif %}">
+    <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50"></div>
+    <div class="container position-relative text-center" style="z-index: 2;">
+      <h1 class="display-4 fw-bold">{{ service.title }}</h1>
+      <p class="lead">Professional Academic Assistance > Services > {{ service.title }}</p>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <div class="container py-5">
+    <div class="row g-5">
+      <!-- Main Content Column -->
+      <main class="col-lg-8">
+        <!-- Intro -->
+        <div class="lead mb-4">{{ service.intro_description|linebreaks }}</div>
+
+        <!-- Rich Content -->
+        <div class="mb-5">{{ service.content|safe }}</div>
+
+        <!-- Related Services -->
+        <div class="mt-5">
+          <h3 class="fw-bold mb-4">Related Services</h3>
+          <div class="row g-3">
+            {% for related in related_services %}
+              <div class="col-md-6">
+                <a href="{% url 'service_detail' related.slug %}" class="text-decoration-none">
+                  <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body d-flex align-items-center">
+                      {% if related.thumbnail %}
+                        <img src="{{ related.thumbnail.url }}" alt="{{ related.title }}" class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;" />
+                      {% else %}
+                        <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                          <i class="bi bi-briefcase text-muted"></i>
+                        </div>
+                      {% endif %}
+                      <h6 class="mb-0 text-dark">{{ related.title }}</h6>
+                    </div>
+                  </div>
+                </a>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </main>
+
+      <!-- Sidebar -->
+      <aside class="col-lg-4">
+        <!-- Quick Links -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-body">
+            <h5 class="card-title fw-bold mb-3">Explore Services</h5>
+            <div class="list-group list-group-flush">
+              <a href="{% url 'service_list' %}" class="list-group-item list-group-item-action border-0">All Services <i class="bi bi-grid float-end"></i></a>
+              {% if menu_services %}
+                {% for s in menu_services %}
+                  <a href="{% url 'service_detail' s.slug %}" class="list-group-item list-group-item-action border-0 {% if s.slug == service.slug %}active{% endif %}">{{ s.title }} <i class="bi bi-chevron-right float-end"></i></a>
+                {% endfor %}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA Widget -->
+        <div class="card border-0 bg-dark text-white">
+          <div class="card-body text-center p-4">
+            <h5 class="fw-bold">Need Help?</h5>
+            <p>Get expert assistance with {{ service.title }} from our qualified professionals.</p>
+            <a href="https://wa.me/919959691347" target="_blank" rel="noopener noreferrer" class="btn btn-light btn-lg">Order Now</a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+{% endblock %}

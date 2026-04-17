@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  Free Academic Tools - OAH
+{% endblock %}
+
+{% block content %}
+  <section class="bg-dark text-white py-5">
+    <div class="container text-center">
+      <h1 class="display-4 fw-bold">Free Academic Tools</h1>
+      <p class="lead">Essential tools to boost your academic performance</p>
+    </div>
+  </section>
+
+  <!-- Search Section -->
+  <section class="py-4 bg-light">
+    <div class="container">
+      <form method="GET" action="{% url 'tools' %}" class="row g-3 justify-content-center">
+        <div class="col-md-8 col-lg-6">
+          <div class="input-group input-group-lg">
+            <input type="text" name="q" value="{{ query|default:'' }}" class="form-control" placeholder="Search tools..." autocomplete="off" />
+            {% if query %}
+              <a href="{% url 'tools' %}" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
+            {% endif %}
+            <button type="submit" class="btn btn-dark"><i class="bi bi-search"></i></button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="py-5">
+    <div class="container">
+      <div class="row g-4">
+        {% for tool in page_obj %}
+          <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body text-center">
+                <div class="bg-light border rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                  <i class="{{ tool.icon_class|default:'bi bi-tools' }} fs-1 text-dark"></i>
+                </div>
+                <h5 class="card-title">{{ tool.title }}</h5>
+                <p class="card-text text-muted">{{ tool.description }}</p>
+                <a href="{{ tool.external_link }}" target="_blank" class="btn btn-dark"><i class="bi bi-box-arrow-up-right"></i> Use Tool</a>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="col-12 text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
+            <p class="text-muted mt-3">No tools found.</p>
+          </div>
+        {% endfor %}
+      </div>
+
+      {% if page_obj.has_other_pages %}
+        <nav class="mt-5">
+          <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link"
+                  href="?page={{ page_obj.previous_page_number }}{% if query %}
+                    
+                    
+                    
+                    &q={{ query }}
+                  {% endif %}">
+                  <i class="bi bi-chevron-left"></i> Previous
+                </a>
+              </li>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+              {% if page_obj.number == num %}
+                <li class="page-item active">
+                  <span class="page-link">{{ num }}</span>
+                </li>
+              {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                  <a class="page-link"
+                    href="?page={{ num }}{% if query %}
+                      
+                      
+                      
+                      &q={{ query }}
+                    {% endif %}">
+                    {{ num }}
+                  </a>
+                </li>
+              {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link"
+                  href="?page={{ page_obj.next_page_number }}{% if query %}
+                    
+                    
+                    
+                    &q={{ query }}
+                  {% endif %}">
+                  Next <i class="bi bi-chevron-right"></i>
+                </a>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

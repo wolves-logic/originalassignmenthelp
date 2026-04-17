@@ -1,0 +1,68 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.prod.yml
+#
+# Production compose file — used for local integration testing and as a
+# reference for the manual first-time EC2 setup.
+#
+# In automated CI/CD (deploy.yml), containers are managed individually via
+# `docker run` to support blue/green slot swapping.
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+# ─────────────────────────────────────────────────────────────────────────────
+version: "3.9"
+
+services:
+
+  # ── Django / Gunicorn ───────────────────────────────────────────────────────
+  web:
+    image: ghcr.io/${GITHUB_OWNER:-your-username}/oah:latest
+    restart: unless-stopped
+
+    # Secrets are never baked into the image — always mounted at runtime
+    env_file: /opt/oah/.env
+
+    volumes:
+      # Static files: collectstatic writes here; Nginx reads from here
+      - staticfiles:/app/staticfiles
+      # Persistent log directory inside the container
+      - logs:/app/logs
+
+    ports:
+      # Bind to loopback only — Nginx proxies; never expose to public internet
+      - "127.0.0.1:8001:8000"
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Nginx ────────────────────────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    volumes:
+      # Nginx config files from repository
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/oah.conf:/etc/nginx/conf.d/oah.conf:ro
+      # Upstream file updated by deploy script (blue/green)
+      - /etc/nginx/conf.d/oah_upstream.conf:/etc/nginx/conf.d/oah_upstream.conf:ro
+      # Serve Django static files directly (no Python involved)
+      - staticfiles:/opt/oah/staticfiles:ro
+      # SSL certificates managed by Certbot on the host
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  staticfiles:   # Shared between web (writes) and nginx (reads)
+  logs:          # Persistent application logs

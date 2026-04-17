@@ -1,0 +1,147 @@
+{% load static %}
+
+<footer class="bg-dark text-white py-5">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-12 col-md-6 col-lg-3">
+        <a href="{% url 'home' %}" class="d-block mb-3"><img src="{% static 'assets/footer_logo.png' %}"
+            alt="Original Assignment Help" height="100" width="100" /></a>
+        <p class="text-white-50 small">
+          {% if site_settings and site_settings.site_description %}
+          {{ site_settings.site_description }}
+          {% endif %}
+        </p>
+
+        <div class="d-flex gap-2 mt-3">
+          {% if site_settings.facebook_link %}
+          <a href="{{ site_settings.facebook_link }}" target="_blank" class="btn btn-outline-light btn-sm"
+            aria-label="Facebook"><i class="bi bi-facebook"></i></a>
+          {% endif %}
+          {% if site_settings.twitter_link %}
+          <a href="{{ site_settings.twitter_link }}" target="_blank" class="btn btn-outline-light btn-sm"
+            aria-label="Twitter"><i class="bi bi-twitter-x"></i></a>
+          {% endif %}
+          {% if site_settings.instagram_link %}
+          <a href="{{ site_settings.instagram_link }}" target="_blank" class="btn btn-outline-light btn-sm"
+            aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+          {% endif %}
+          {% if site_settings.linkedin_link %}
+          <a href="{{ site_settings.linkedin_link }}" target="_blank" class="btn btn-outline-light btn-sm"
+            aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-3">
+        <h6 class="fw-bold mb-3">Company</h6>
+        <ul class="list-unstyled">
+          <li class="mb-2">
+            <a href="{% url 'about' %}" class="text-white-50 text-decoration-none"><i
+                class="bi bi-chevron-right me-1"></i>About Us</a>
+          </li>
+          <li class="mb-2">
+            <a href="{% url 'blog_list' %}" class="text-white-50 text-decoration-none"><i
+                class="bi bi-chevron-right me-1"></i>Blog</a>
+          </li>
+          <li class="mb-2">
+            <a href="{% url 'resources' %}" class="text-white-50 text-decoration-none"><i
+                class="bi bi-chevron-right me-1"></i>Resources</a>
+          </li>
+          <li class="mb-2">
+            <a href="{% url 'contact' %}" class="text-white-50 text-decoration-none"><i
+                class="bi bi-chevron-right me-1"></i>Contact</a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-3">
+        <h6 class="fw-bold mb-3">Services</h6>
+        <ul class="list-unstyled">
+          <li class="mb-2">
+            <a href="{% url 'service_list' %}" class="text-white-50 text-decoration-none"><i
+                class="bi bi-chevron-right me-1"></i>All Services</a>
+          </li>
+          <li class="mb-2">
+            <a href="{% url 'subject_list' %}" class="text-white-50 text-decoration-none"><i
+                class="bi bi-chevron-right me-1"></i>All Subjects</a>
+          </li>
+          {% if menu_services %}
+          {% for service in menu_services %}
+          <li class="mb-2">
+            <a href="{% url 'service_detail' service.slug %}" class="text-white-50 text-decoration-none"><i
+                class="bi bi-chevron-right me-1"></i>{{ service.title }}</a>
+          </li>
+          {% endfor %}
+          {% endif %}
+        </ul>
+      </div>
+
+      <div class="col-12 col-md-6 col-lg-3">
+        <h6 class="fw-bold mb-3">Contact</h6>
+        <ul class="list-unstyled small">
+          <li class="mb-3 d-flex">
+            <i class="bi bi-envelope-fill text-light me-2 mt-1"></i>
+            <span class="text-white-50">
+              {% if site_settings and site_settings.email %}
+              {{ site_settings.email }}
+              {% endif %}
+            </span>
+          </li>
+          <li class="mb-3 d-flex">
+            <i class="bi bi-whatsapp text-light me-2 mt-1"></i>
+            <span class="text-white-50">
+              {% if site_settings and site_settings.phone %}
+              {{ site_settings.phone }}
+              {% endif %}
+            </span>
+          </li>
+          <li class="mb-3 d-flex">
+            <i class="bi bi-geo-alt-fill text-light me-2 mt-1"></i>
+            <div class="text-white-50">
+              <strong class="text-white">Head Office</strong><br />
+              {% if site_settings and site_settings.head_office_address %}
+              {{ site_settings.head_office_address|linebreaksbr }}
+              {% endif %}
+            </div>
+          </li>
+          <li class="mb-3 d-flex">
+            <i class="bi bi-geo-fill text-light me-2 mt-1"></i>
+            <div class="text-white-50">
+              <strong class="text-white">Branch Office</strong><br />
+              {% if site_settings and site_settings.branch_office_address %}
+              {{ site_settings.branch_office_address|linebreaksbr }}
+              {% endif %}
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="row mt-4 pt-4 border-top border-secondary">
+      <div class="col-12 col-md-6 text-center text-md-start">
+        <p class="text-white-50 small mb-0">
+          {% if site_settings and site_settings.copyright_text %}
+          {{ site_settings.copyright_text }}
+          {% else %}
+          © 2024 Original Assignment Help. All rights reserved.
+          {% endif %}
+        </p>
+      </div>
+      <div class="col-12 col-md-6 text-center text-md-end">
+        <ul class="list-inline mb-0 small">
+          <li class="list-inline-item">
+            <a href="{% url 'privacy_policy' %}" class="text-white-50 text-decoration-none">Privacy Policy</a>
+          </li>
+          <li class="list-inline-item text-white-50">|</li>
+          <li class="list-inline-item">
+            <a href="{% url 'terms_conditions' %}" class="text-white-50 text-decoration-none">Terms of Service</a>
+          </li>
+          <li class="list-inline-item text-white-50">|</li>
+          <li class="list-inline-item">
+            <a href="{% url 'refund_policy' %}" class="text-white-50 text-decoration-none">Refund Policy</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</footer>

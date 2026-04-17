@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+Refund Policy - OAH
+{% endblock %}
+
+{% block content %}
+<section class="bg-dark text-white py-5">
+  <div class="container text-center">
+    <h1 class="display-4 fw-bold">Refund Policy</h1>
+    <p class="lead">Our refund and cancellation policy</p>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-5">
+            {% if refund_policy and refund_policy.content %}
+            {{ refund_policy.content|safe }}
+            {% else %}
+            <h3>Refund Policy</h3>
+            <p class="text-muted">Refund policy content will be displayed here.</p>
+            <p>Please contact the administrator to add refund policy content.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

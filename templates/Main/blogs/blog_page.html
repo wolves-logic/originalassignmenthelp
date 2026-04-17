@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  {{ post.title }} | Original Assignment Help
+{% endblock %}
+
+{% block content %}
+  <section class="bg-dark text-white py-5 position-relative"
+    style="min-height: 300px; {% if post.featured_image %}
+      background-image: url('{{ post.featured_image.url }}'); background-size: cover; background-position: center;
+    {% endif %}">
+    <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50"></div>
+    <div class="container position-relative text-center" style="z-index: 2;">
+      <span class="badge bg-light text-dark mb-3">{{ post.category }}</span>
+      <h1 class="display-4 fw-bold">{{ post.title }}</h1>
+      <p class="lead">
+        <i class="bi bi-calendar3"></i> {{ post.created_at|date:'F d, Y' }}
+      </p>
+    </div>
+  </section>
+
+  {# Main Content Area #}
+  <div class="container py-5">
+    <div class="row g-5">
+      {# Article Content - Main column #}
+      <main class="col-lg-8">
+        <div class="lead mb-4">{{ post.excerpt }}</div>
+        <div class="mb-5">{{ post.content|safe }}</div>
+
+        {# Related Articles Section #}
+        {% if related_posts %}
+          <div class="mt-5">
+            <h3 class="fw-bold mb-4">Related Articles</h3>
+            <div class="row g-3">
+              {% for related in related_posts %}
+                <div class="col-md-6">
+                  <a href="{% url 'blog_detail' related.slug %}" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm h-100">
+                      <div class="card-body">
+                        <span class="badge bg-dark mb-2">{{ related.category }}</span>
+                        <h6 class="text-dark">{{ related.title }}</h6>
+                        <small class="text-muted">{{ related.published_at|date:'M d, Y' }}</small>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </main>
+
+      {# Sidebar - Category navigation and CTA #}
+      <aside class="col-lg-4">
+        {# Category Navigation #}
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-body">
+            <h5 class="card-title fw-bold mb-3">Categories</h5>
+            <div class="list-group list-group-flush">
+              <a href="{% url 'blog_list' %}" class="list-group-item list-group-item-action border-0">All Articles</a>
+              {% for cat in categories %}
+                <a href="{% url 'blog_list' %}?category={{ cat }}" class="list-group-item list-group-item-action border-0">{{ cat }}</a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        {# Call-to-Action Widget #}
+        <div class="card border-0 bg-dark text-white">
+          <div class="card-body text-center p-4">
+            <h5 class="fw-bold">Need Academic Help?</h5>
+            <p>Get expert assistance from our qualified professionals.</p>
+            <a href="{% url 'contact' %}" class="btn btn-light btn-lg">Contact Us</a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+{% endblock %}

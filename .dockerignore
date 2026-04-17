@@ -1,0 +1,64 @@
+# ── Directories that must never enter the Docker image ────────────────────────
+
+# Git & Version Control
+.git/
+.github/
+.gitignore
+
+# Docker configuration files
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Virtual environments (Causes massive bloat)
+venv/
+.venv/
+env/
+ENV/
+
+# Local DBs
+db.sqlite3
+db.sqlite3-journal
+
+# Secrets & Configs
+.env
+.env.*
+!.env.example
+
+# Uploaded Media 
+media/
+
+# Collected statics (regenerated via python manage.py collectstatic)
+staticfiles/
+
+# Logs 
+logs/
+*.log
+
+# Pytest / Coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# OS / IDE
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~

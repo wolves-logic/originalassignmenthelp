@@ -1,0 +1,327 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <!-- Hero Section -->
+  <section class="hero-section">
+    {% if hero and hero.hero_image %}
+      <img src="{{ hero.hero_image.url }}" alt="Hero Background" class="hero-bg-img" />
+    {% endif %}
+    <div class="hero-overlay"></div>
+    <div class="container hero-content">
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          {% if hero %}
+            <div class="hero-badge-container animate__animated animate__fadeInDown">
+              <span class="hero-badge">
+                <i class="bi bi-star-fill hero-badge-icon"></i>{{ hero.badge_text }}
+              </span>
+            </div>
+            <h1 class="hero-title animate__animated animate__fadeInUp">
+              {{ hero.title_leading }}<br />
+              <span class="hero-title-highlight">{{ hero.title_highlight }}</span>
+            </h1>
+            <p class="hero-subtitle animate__animated animate__fadeInUp animate__delay-1s">
+              {{ hero.subtitle }}
+            </p>
+            <div class="hero-actions animate__animated animate__fadeInUp animate__delay-1s">
+              <a href="https://wa.me/919959691347" target="_blank" rel="noopener noreferrer" class="btn-custom btn-custom-primary">
+                <i class="bi bi-rocket-takeoff btn-custom-primary-icon"></i>{{ hero.button_1_text }}
+              </a>
+              <a href="{% url 'service_list' %}" class="btn-custom btn-custom-outline">
+                <i class="bi bi-grid btn-custom-outline-icon"></i>{{ hero.button_2_text }}
+              </a>
+            </div>
+            <div class="hero-stats-container row g-4 justify-content-center animate__animated animate__fadeInUp animate__delay-2s">
+              <div class="col-6 col-md-3">
+                <div class="stat-card">
+                  <i class="bi bi-people-fill stat-icon"></i>
+                  <div class="stat-number">{{ hero.stat_1_number }}</div>
+                  <div class="stat-label">{{ hero.stat_1_label }}</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="stat-card">
+                  <i class="bi bi-graph-up-arrow stat-icon"></i>
+                  <div class="stat-number">{{ hero.stat_2_number }}</div>
+                  <div class="stat-label">{{ hero.stat_2_label }}</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="stat-card">
+                  <i class="bi bi-mortarboard-fill stat-icon"></i>
+                  <div class="stat-number">{{ hero.stat_3_number }}</div>
+                  <div class="stat-label">{{ hero.stat_3_label }}</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="stat-card">
+                  <i class="bi bi-headset stat-icon"></i>
+                  <div class="stat-number">{{ hero.stat_4_number }}</div>
+                  <div class="stat-label">{{ hero.stat_4_label }}</div>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <i class="bi bi-chevron-double-down hero-scroll-indicator"></i>
+  </section>
+
+  <section class="py-5 bg-light">
+    <div class="container py-5">
+      <div class="text-center mb-5">
+        <span class="badge bg-light text-dark border border-dark mb-2 px-3 py-2 rounded-pill fw-semibold letter-spacing-1">OUR SERVICES</span>
+        <h2 class="display-5 fw-bold text-dark mb-3">Comprehensive Academic Assistance</h2>
+        <p class="text-secondary lead fs-5 w-75 mx-auto">Tailored support strictly designed to meet every single one of your academic needs with precision and care.</p>
+      </div>
+
+      <div class="row g-4">
+        {% for service in services %}
+          <div class="col-sm-6 col-lg-4">
+            <a href="{% url 'service_detail' service.slug %}" class="text-decoration-none text-dark h-100 d-block">
+              <div class="card h-100 border-0 shadow-sm hover-shadow hover-translate-up transition-base overflow-hidden rounded-4">
+                {% if service.thumbnail %}
+                  <div class="overflow-hidden position-relative" style="height: 220px;">
+                    <img src="{{ service.thumbnail.url }}" class="card-img-top object-fit-cover w-100 h-100 transition-zoom" alt="{{ service.title }}" />
+                    <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark opacity-0 hover-opacity-10 transition-base"></div>
+                  </div>
+                {% else %}
+                  <div class="card-img-top bg-light d-flex align-items-center justify-content-center text-muted opacity-25" style="height: 220px;">
+                    <i class="bi bi-star-fill display-4"></i>
+                  </div>
+                {% endif %}
+                <div class="card-body p-4 d-flex flex-column">
+                  <h5 class="card-title fw-bold mb-2 fs-4">{{ service.title }}</h5>
+                  <p class="card-text text-secondary small mb-4 flex-grow-1 line-clamp-3">{{ service.intro_description }}</p>
+                  <div class="mt-auto">
+                    <span class="text-dark fw-bold text-decoration-none icon-link icon-link-hover">Learn More <i class="bi bi-arrow-right"></i></span>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        {% empty %}
+          <div class="col-12 text-center text-muted">No active services found.</div>
+        {% endfor %}
+      </div>
+
+      <div class="text-center mt-6 pt-4">
+        <a href="{% url 'service_list' %}" class="btn btn-dark px-5 py-3 fw-bold rounded-pill shadow hover-transform">View All Services</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-5 bg-white">
+    <div class="container py-5">
+      <div class="text-center mb-5">
+        <span class="badge bg-light text-dark border border-dark mb-2 px-3 py-2 rounded-pill fw-semibold letter-spacing-1">SUBJECTS</span>
+        <h2 class="display-5 fw-bold text-dark mb-3">Subjects We Cover</h2>
+        <p class="text-secondary lead fs-5 w-75 mx-auto">Expert guidance across a wide range of academic disciplines.</p>
+      </div>
+
+      <div class="row g-4">
+        {% for subject in subjects %}
+          <div class="col-sm-6 col-lg-4">
+            <a href="{% url 'subject_detail' subject.slug %}" class="text-decoration-none text-dark h-100 d-block">
+              <div class="card h-100 border-0 shadow-sm hover-shadow hover-translate-up transition-base overflow-hidden rounded-4">
+                {% if subject.thumbnail %}
+                  <div class="overflow-hidden position-relative" style="height: 200px;">
+                    <img src="{{ subject.thumbnail.url }}" class="card-img-top object-fit-cover w-100 h-100 transition-zoom" alt="{{ subject.title }}" />
+                  </div>
+                {% else %}
+                  <div class="card-img-top bg-light d-flex align-items-center justify-content-center text-muted opacity-25" style="height: 200px;">
+                    <i class="bi bi-book display-4"></i>
+                  </div>
+                {% endif %}
+                <div class="card-body p-4 d-flex flex-column">
+                  <h5 class="card-title fw-bold mb-2">{{ subject.title }}</h5>
+                  <p class="card-text text-secondary small mb-3 flex-grow-1">{{ subject.intro_description|truncatewords:12 }}</p>
+                  <div class="mt-auto">
+                    <span class="text-dark fw-semibold small">Learn More <i class="bi bi-arrow-right ms-1"></i></span>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        {% empty %}
+          <div class="col-12 text-center text-muted">No active subjects found.</div>
+        {% endfor %}
+      </div>
+
+      <div class="text-center mt-5">
+        <a href="{% url 'subject_list' %}" class="btn btn-outline-dark px-5 py-3 fw-semibold rounded-pill border-2 hover-bg-dark hover-text-white transition-base">View All Subjects</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="py-5 bg-light position-relative overflow-hidden">
+    <!-- Optional decorative element usually works well with testimonials -->
+    <div class="position-absolute start-0 top-0 w-100 h-100 opacity-50" style="background-image: radial-gradient(#e9ecef 1px, transparent 1px); background-size: 20px 20px;"></div>
+
+    <div class="container py-5 position-relative z-1">
+      <div class="text-center mb-5">
+        <span class="badge bg-light text-dark border border-dark mb-2 px-3 py-2 rounded-pill fw-semibold letter-spacing-1">TESTIMONIALS</span>
+        <h2 class="display-5 fw-bold text-dark mb-3">What Students Say</h2>
+        <p class="text-secondary lead fs-5">Join our community of successful students.</p>
+      </div>
+
+      <div class="row g-4 justify-content-center">
+        {% for testimonial in testimonials %}
+          <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-shadow transition-base rounded-4 bg-white">
+              <div class="card-body p-5">
+                <div class="d-flex align-items-center mb-4">
+                  <div class="flex-shrink-0">
+                    <div class="bg-dark bg-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 56px; height: 56px; font-size: 1.25rem;">{{ testimonial.student_initials|default:'U' }}</div>
+                  </div>
+                  <div class="ms-3">
+                    <h6 class="mb-0 fw-bold text-dark fs-5">{{ testimonial.student_name }}</h6>
+                    <small class="text-muted fw-semibold">{{ testimonial.course_field }}</small>
+                  </div>
+                </div>
+
+                <div class="mb-4 text-dark small">
+                  {% for i in '12345'|make_list %}
+                    {% if forloop.counter <= testimonial.rating %}
+                      <i class="bi bi-star-fill"></i>
+                    {% else %}
+                      <i class="bi bi-star"></i>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+
+                <div class="position-relative">
+                  <i class="bi bi-quote text-dark opacity-10 position-absolute top-0 start-0 translate-middle-y display-1" style="left: -10px !important;"></i>
+                  <p class="card-text text-secondary fst-italic position-relative z-1 mb-0 fs-6">"{{ testimonial.message }}"</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="col-12 text-center py-5">
+            <i class="bi bi-chat-quote display-4 text-muted opacity-25 mb-3 d-block"></i>
+            <p class="text-muted">No testimonials yet.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="py-5 bg-white">
+    <div class="container py-5">
+      <div class="row g-4">
+        <div class="col-md-6 col-lg-4">
+          <div class="card h-100 border-0 shadow-sm text-center rounded-4 hover-shadow hover-translate-up transition-base bg-light-subtle">
+            <div class="card-body p-5">
+              <div class="d-inline-block p-3 rounded-circle bg-white shadow-sm mb-4">
+                <i class="bi bi-journal-check display-4 text-dark"></i>
+              </div>
+              <h3 class="fw-bold h4 mb-3">Study Guides</h3>
+              <a href="{% url 'guides' %}" class="btn btn-dark rounded-pill px-4 fw-semibold w-100">Browse Guides</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4">
+          <div class="card h-100 border-0 shadow-sm text-center rounded-4 hover-shadow hover-translate-up transition-base bg-light-subtle">
+            <div class="card-body p-5">
+              <div class="d-inline-block p-3 rounded-circle bg-white shadow-sm mb-4">
+                <i class="bi bi-tools display-4 text-dark"></i>
+              </div>
+              <h3 class="fw-bold h4 mb-3">Free Tools</h3>
+              <a href="{% url 'tools' %}" class="btn btn-dark rounded-pill px-4 text-white fw-semibold w-100">Explore Tools</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 col-lg-4 mx-auto">
+          <div class="card h-100 border-0 shadow-sm text-center rounded-4 hover-shadow hover-translate-up transition-base bg-light-subtle">
+            <div class="card-body p-5">
+              <div class="d-inline-block p-3 rounded-circle bg-white shadow-sm mb-4">
+                <i class="bi bi-file-earmark-text display-4 text-dark"></i>
+              </div>
+              <h3 class="fw-bold h4 mb-3">Sample Works</h3>
+              <a href="{% url 'works' %}" class="btn btn-dark rounded-pill px-4 text-white fw-semibold w-100">View Samples</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if cta_banner %}
+    <section class="py-5 text-white position-relative overflow-hidden" style="background: linear-gradient(135deg, #1f1f1f 0%, #000000 100%);">
+      <!-- Background decoration -->
+      <div class="position-absolute top-0 end-0 w-50 h-100 bg-white opacity-5" style="transform: skewX(-20deg);"></div>
+
+      <div class="container py-4 position-relative z-1">
+        <div class="row align-items-center">
+          <div class="col-lg-7 mb-5 mb-lg-0">
+            <span class="badge bg-white bg-opacity-20 border border-white border-opacity-25 rounded-pill px-3 py-2 mb-3">LIMITED TIME OFFER</span>
+            <h2 class="display-4 fw-bold mb-3">{{ cta_banner.title }}</h2>
+            <p class="lead mb-4 text-white-75">{{ cta_banner.subtitle }}</p>
+
+            <ul class="list-unstyled mb-5">
+              {% if cta_banner.feature_1 %}
+                <li class="mb-3 d-flex align-items-center">
+                  <i class="bi bi-check-circle-fill text-dark me-3 fs-5 bg-white rounded-circle p-1"></i>
+                  <span class="fs-5">{{ cta_banner.feature_1 }}</span>
+                </li>
+              {% endif %}
+              {% if cta_banner.feature_2 %}
+                <li class="mb-3 d-flex align-items-center">
+                  <i class="bi bi-check-circle-fill text-dark me-3 fs-5 bg-white rounded-circle p-1"></i>
+                  <span class="fs-5">{{ cta_banner.feature_2 }}</span>
+                </li>
+              {% endif %}
+              {% if cta_banner.feature_3 %}
+                <li class="mb-3 d-flex align-items-center">
+                  <i class="bi bi-check-circle-fill text-dark me-3 fs-5 bg-white rounded-circle p-1"></i>
+                  <span class="fs-5">{{ cta_banner.feature_3 }}</span>
+                </li>
+              {% endif %}
+            </ul>
+
+            <a href="{{ cta_banner.button_link }}" class="btn btn-light btn-lg px-5 py-3 rounded-pill fw-bold text-dark shadow-lg hover-scale transition-base">{{ cta_banner.button_text }}</a>
+          </div>
+
+          <div class="col-lg-5">
+            <div class="card bg-white bg-opacity-10 border-1 border-white border-opacity-25 text-white text-center p-4 p-md-5 rounded-4 shadow-lg backdrop-blur-sm">
+              <div class="mb-3">
+                <i class="bi bi-shield-check display-1 text-dark"></i>
+              </div>
+              <h4 class="fw-bold mb-2 fs-3">{{ cta_banner.guarantee_title }}</h4>
+              <p class="mb-0 opacity-75 fs-5">{{ cta_banner.guarantee_subtitle }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  {% endif %}
+
+  <section class="py-5 bg-light">
+    <div class="container py-5">
+      <div class="text-center mb-5">
+        <span class="badge bg-light text-dark border border-dark mb-2 px-3 py-2 rounded-pill fw-semibold letter-spacing-1">FAQ</span>
+        <h2 class="display-5 fw-bold text-dark">Common Questions</h2>
+      </div>
+
+      <div class="row justify-content-center">
+        <div class="col-lg-8">
+          <div class="accordion accordion-flush bg-transparent" id="faqAccordion">
+            {% for faq in faqs %}
+              <div class="accordion-item border-0 mb-3 shadow-sm rounded-4 overflow-hidden bg-white">
+                <h2 class="accordion-header"><button class="accordion-button collapsed fw-semibold py-3 px-4 fs-5" type="button" data-bs-toggle="collapse" data-bs-target="#faq{{ forloop.counter }}">{{ faq.question }}</button></h2>
+                <div id="faq{{ forloop.counter }}" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                  <div class="accordion-body px-4 pb-4 text-secondary">{{ faq.answer|linebreaks }}</div>
+                </div>
+              </div>
+            {% empty %}
+              <p class="text-center text-muted">No FAQs available.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

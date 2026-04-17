@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL Database (Local) ──────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: oah_local
+      POSTGRES_PASSWORD: oah_local_password
+      POSTGRES_DB: oah_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oah_local -d oah_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (Local Caching & Sessions) ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:

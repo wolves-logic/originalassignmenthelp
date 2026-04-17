@@ -1,0 +1,51 @@
+{% load static %}
+
+{% if offer %}
+  <div id="offer-banner" class="alert alert-dark alert-dismissible fade show mb-0 text-center rounded-0 border-0 py-2" role="alert">
+    <div class="container d-flex align-items-center justify-content-center">
+      <i class="bi bi-gift-fill me-2" aria-hidden="true"></i>
+      <span class="small fw-medium">{{ offer.text|safe }}</span>
+      <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  </div>
+{% endif %}
+
+<header class="site-header sticky-top bg-white shadow-sm">
+  <nav class="navbar navbar-expand-lg navbar-light py-3">
+    <div class="container">
+      <a href="{% url 'home' %}" class="navbar-brand d-flex align-items-center"><img src="{% static 'assets/header_logo.png' %}" alt="Original Assignment Help" height="50" width="50" class="img-fluid" /></a>
+
+      <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav mx-auto mb-3 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link px-lg-3 {% if request.resolver_match.url_name == 'home' %}active fw-bold text-dark{% endif %}" href="{% url 'home' %}">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-lg-3 {% if 'service' in request.resolver_match.url_name %}active fw-bold text-dark{% endif %}" href="{% url 'service_list' %}">Services</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-lg-3 {% if 'subject' in request.resolver_match.url_name %}active fw-bold text-dark{% endif %}" href="{% url 'subject_list' %}">Subjects</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-lg-3 {% if 'resources' in request.resolver_match.url_name or 'guides' in request.resolver_match.url_name or 'tools' in request.resolver_match.url_name or 'works' in request.resolver_match.url_name %}active fw-bold text-dark{% endif %}" href="{% url 'resources' %}">Resources</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-lg-3 {% if 'blog' in request.resolver_match.url_name %}active fw-bold text-dark{% endif %}" href="{% url 'blog_list' %}">Blog</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-lg-3 {% if request.resolver_match.url_name == 'about' %}active fw-bold text-dark{% endif %}" href="{% url 'about' %}">About</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-lg-3 {% if request.resolver_match.url_name == 'contact' %}active fw-bold text-dark{% endif %}" href="{% url 'contact' %}">Contact</a>
+          </li>
+        </ul>
+
+        <div class="d-grid d-lg-flex gap-2">
+          <a href="https://wa.me/919959691347" target="_blank" rel="noopener noreferrer" class="btn btn-dark px-4">Book Now</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+</header>
