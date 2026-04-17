@@ -1,10 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # deploy.yml — CI/CD pipeline for Original Assignment Help (Django)
-#
-# architecture:
-#   1. test        — Django system check + migrations test
-#   2. build-push  — Docker build → push to GitHub Container Registry (GHCR)
-#   3. deploy      — SSH to EC2, pull image, blue/green container swap
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: Build · Test · Deploy
@@ -17,13 +12,10 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  # Fix Node.js 20 deprecation warnings by opting into Node.js 24
+  # Fix Node.js 20 deprecation warnings
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  # ──────────────────────────────────────────────────────────────────────────
-  # JOB 1 — Test
-  # ──────────────────────────────────────────────────────────────────────────
   test:
     name: Django System Check & Tests
     runs-on: ubuntu-latest
@@ -63,9 +55,6 @@ jobs:
       - run: python manage.py check --deploy || true
       - run: python manage.py migrate --noinput
 
-  # ──────────────────────────────────────────────────────────────────────────
-  # JOB 2 — Build & Push
-  # ──────────────────────────────────────────────────────────────────────────
   build-push:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
@@ -80,12 +69,8 @@ jobs:
       - name: Lowercase repo name
         id: lower
         run: echo "repo=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -94,15 +79,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ──────────────────────────────────────────────────────────────────────────
-  # JOB 3 — Deploy (Zero-Downtime Blue/Green)
-  # ──────────────────────────────────────────────────────────────────────────
   deploy:
     name: Deploy to EC2
     runs-on: ubuntu-latest
     needs: build-push
-    # Set to 'production' if using Environment Secrets, or remove to use Repository Secrets.
-    # environment: production
     steps:
       - name: Execute Remote SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -112,55 +92,46 @@ jobs:
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           port: 22
           script_stop: true
-          # command_timeout increases the allowed time for slow pulls/builds
           command_timeout: 15m
           script: |
-            set -eu
+            set -e
             IMAGE="${{ needs.build-push.outputs.image_tag }}"
             APP_DIR="/opt/oah"
             
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo " [1/4] PULLING IMAGE: $IMAGE"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "--- STEP 1: PULLING IMAGE ---"
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             docker pull "$IMAGE"
-            echo " Image pull complete."
-
-            # Verify environment prerequisites on the host VM
-            if [ ! -d "$APP_DIR" ]; then 
-              echo " ERROR: Application directory $APP_DIR not found on host."
-              echo "Please run: sudo mkdir -p $APP_DIR && sudo chown \$USER:\$USER $APP_DIR"
+            
+            if [ ! -d "$APP_DIR" ]
+            then 
+              echo "ERROR: Application directory $APP_DIR not found."
               exit 1
             fi
             
-            if [ ! -f "$APP_DIR/.env" ]; then
-              echo " ERROR: Production .env file missing at $APP_DIR/.env"
-              echo "Please create it and add your RDS/S3 credentials before deploying."
+            if [ ! -f "$APP_DIR/.env" ]
+            then
+              echo "ERROR: .env file missing at $APP_DIR/.env"
               exit 1
             fi
 
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo " [2/4] IDENTIFYING SLOTS"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            
-            # Check which container is currently running to determine target
-            # Use POSIX 'case' for maximum compatibility
+            echo "--- STEP 2: IDENTIFYING SLOTS ---"
             ACTIVE_CONTAINERS=$(docker ps --format '{{.Names}}')
-            case "$ACTIVE_CONTAINERS" in
-              *oah_blue*)
-                NEW="green"; NEW_PORT=8002; OLD="blue"
-                ;;
-              *)
-                NEW="blue";  NEW_PORT=8001; OLD="green"
-                ;;
-            esac
             
-            echo " Active slot: $OLD -> Deploying to: $NEW (port $NEW_PORT)"
+            if echo "$ACTIVE_CONTAINERS" | grep -q "oah_blue"
+            then
+              NEW="green"
+              NEW_PORT="8002"
+              OLD="blue"
+            else
+              NEW="blue"
+              NEW_PORT="8001"
+              OLD="green"
+            fi
             
-            # Remove stale container if it exists
+            echo "Target Slot: $NEW (Port: $NEW_PORT)"
+            
             docker rm -f "oah_$NEW" 2>/dev/null || true
             
-            # Launch the new container
             docker run -d \
               --name "oah_$NEW" \
               --env-file "$APP_DIR/.env" \
@@ -170,17 +141,14 @@ jobs:
               --restart unless-stopped \
               "$IMAGE"
             
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo " [3/4] WARMING UP & HEALTH CHECK"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            
-            # Basic warmup period
+            echo "--- STEP 3: HEALTH CHECK ---"
             sleep 10
             
-            # Simple health check polling (POSIX compliant)
             HEALTHY=0
-            for i in 1 2 3 4 5 6 7 8 9 10; do
-              if curl -s "http://127.0.0.1:$NEW_PORT/health/" > /dev/null; then
+            for i in 1 2 3 4 5 6 7 8 9 10
+            do
+              if curl -s "http://127.0.0.1:$NEW_PORT/health/" > /dev/null
+              then
                 HEALTHY=1
                 break
               fi
@@ -188,32 +156,21 @@ jobs:
               sleep 5
             done
 
-            if [ "$HEALTHY" -eq 0 ]; then
-              echo " HEALTH CHECK FAILED. Removing failed container."
+            if [ "$HEALTHY" -eq 0 ]
+            then
+              echo "ERROR: HEALTH CHECK FAILED."
               docker rm -f "oah_$NEW"
               exit 1
             fi
-            
-            echo " Container is healthy. Proceeding to traffic swap."
 
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo " [4/4] SWAPPING NGINX UPSTREAM"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            
+            echo "--- STEP 4: NGINX SWAP ---"
             UPSTREAM="/etc/nginx/conf.d/oah_upstream.conf"
             echo "upstream oah_app { server 127.0.0.1:$NEW_PORT; keepalive 32; }" | sudo tee "$UPSTREAM" > /dev/null
             sudo nginx -t && sudo nginx -s reload
             
-            echo " Traffic routed to $NEW slot. Cleaning up $OLD..."
-            
-            # Wait for in-flight requests to complete
             sleep 5
             docker stop "oah_$OLD" 2>/dev/null || true
             docker rm "oah_$OLD" 2>/dev/null || true
-            
-            # Clean up old images to keep disk space under control
             docker image prune -f --filter "until=24h"
             
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "  DEPLOYMENT COMPLETE"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "--- DEPLOYMENT COMPLETE ---"
