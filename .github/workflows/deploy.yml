@@ -142,7 +142,9 @@ jobs:
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             
             # Check which container is currently running to determine the target
-            if docker ps --format '{{.Names}}' | grep -q "^oah_blue$"; then
+            # Use a more resilient check that won't trip 'set -o pipefail'
+            ACTIVE_CONTAINERS=$(docker ps --format '{{.Names}}')
+            if [[ "$ACTIVE_CONTAINERS" == *"oah_blue"* ]]; then
               NEW="green"; NEW_PORT=8002; OLD="blue"
             else
               NEW="blue";  NEW_PORT=8001; OLD="green"
